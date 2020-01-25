@@ -968,6 +968,7 @@ int main(int argc, char *argv[]){
   interp *sf;
   sf = init_sf();
   char buffer[MAX_STR_LEN];
+ // If desired read an external list of user defined functions into the interpreter
   //readlib(sf, "functions.txt");
 
  // check for interactive versus non interactive mode
@@ -975,7 +976,6 @@ int main(int argc, char *argv[]){
   if(strstr(argv[1], "-h")){ printf("Use: %s <FORTH_FILENAME.f>\n", argv[0]); exit(1);}  
    if(strstr(argv[1], ".f")){  
    interact = 0; 
-  // If desired read an external list of user defined functions into the interpreter
       FILE *fp;
       fp = fopen(argv[1], "r");
         while(fgets(buffer, MAX_STR_LEN, fp) != NULL){
