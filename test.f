@@ -1,4 +1,4 @@
-#!./myforth
+#!./subforth
 INCLUDE "functions.txt"
 INLCUDE "conditions.txt"
 ." Reading in Library FILE functions.txt " CR
