@@ -24,6 +24,16 @@ You can run the interprer interactively or pass a file as argument to run as a s
 ./subforth -h
 Use: ./subforth FORTH_FILENAME.f
 
+Alternatively you can write a script and just point it to the interpreter
+vi hello.f
+
+#!./subforth
+." Hello World" CR
+
+chmod +x hello.f
+
+$ ./hello.f
+Hello World!
 
 
 Here is a simple test drive output:
