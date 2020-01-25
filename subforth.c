@@ -33,7 +33,7 @@ typedef enum { ADD = 1, SUB, MUL, DIV, PSH, POP, DUP, DRP, BYE, HLT, WRD, DON, D
                DSM, SWP, CRT, CLR, MOD, EQL, GTN, LTN, SEE, VAR, STO, RVR, IF, NEQ, ELS, 
                DO, NEG, I, QST, LIB, ROT, OVR, NIP, TCK, EXT, SYS } tokens;
 
-char *banner = "MYFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale";
+char *banner = "SUBFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale";
 
 // Forth employs a Primitive wordlist in which we will pair with our token list.
 // These primitives are basically built in functions.
