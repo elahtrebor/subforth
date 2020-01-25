@@ -1,5 +1,5 @@
-# myforth
-simple subset of forth
+# subforth
+A simple interpreter that supports a subset of forth.
 <pre>
 Work in progress.
 
