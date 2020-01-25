@@ -1,5 +1,5 @@
 # subforth
-A simple interpreter that supports a subset of forth.
+A simple interpreter that supports a subset of forth. Compiled and tested using GCC on WSL Ubuntu, Linux Mint 17, and Android.
 <pre>
 Work in progress.
 
