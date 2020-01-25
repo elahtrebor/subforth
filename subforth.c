@@ -68,7 +68,7 @@ int i, n, z; i = n = z = 0;
 typedef enum { OK , SYNTAX_ERROR} errors; // these are some state id's
 typedef enum { STOPPED, RUNNING, RESET } states;
 
-// This is the Interpreter VM structure that will keep track of states, stack pointer, stack counter, etc
+// This is the Interpreter structure that will keep track of states, stack, stack counter, etc
 // The data stack is wrapped in the interp struct.
 
 typedef struct {
@@ -86,42 +86,42 @@ typedef struct {
 
 // Will have to declare forward declarations for functions that appear out of order.
 
-void read(interp *vm, char *s);
-void print_stack(interp *vm);
+void read(interp *sf, char *s);
+void print_stack(interp *sf);
 void print_prog();
-void destroy_vm(interp *vm);
-int drop(interp *vm);
+void destroy_sf(interp *sf);
+int drop(interp *sf);
 void print_words();
-void parsespace (interp *vm);
-int pop(interp *vm);
+void parsespace (interp *sf);
+int pop(interp *sf);
 char *strtoupper(char *s);
-int push(interp *vm, int n);
-void dumpsym(interp *vm);
-void readlib(interp *vm, char *filename);
+int push(interp *sf, int n);
+void dumpsym(interp *sf);
+void readlib(interp *sf, char *filename);
 
-// This is the VM init function in which sets all values initially
-interp *init_vm(){
- interp *vm = malloc(sizeof(interp));
- vm->state = RUNNING;
- vm->error = OK;
- vm->ip = -1;
- vm->sp = 0;
- vm->sv = 0;
- vm->sc = 0;
- vm->r0 = 0;
- return vm;
+// This is the interpreter init function in which sets all values initially
+interp *init_sf(){
+ interp *sf = malloc(sizeof(interp));
+ sf->state = RUNNING;
+ sf->error = OK;
+ sf->ip = -1;
+ sf->sp = 0;
+ sf->sv = 0;
+ sf->sc = 0;
+ sf->r0 = 0;
+ return sf;
 }
 
-// this will reset the VM
-interp *reset_vm(interp *vm){
- vm->state = 99;
- vm->error = OK;
- vm->ip = -1;
- vm->sp = 0;
- vm->sv = 0;
- vm->sc = 0;
- vm->r0 = 0;
- return vm;
+// this will reset the interp
+interp *reset_sf(interp *sf){
+ sf->state = 99;
+ sf->error = OK;
+ sf->ip = -1;
+ sf->sp = 0;
+ sf->sv = 0;
+ sf->sc = 0;
+ sf->r0 = 0;
+ return sf;
 }
 
 /* ******************************* CORE stack functions. ******************************************** */
@@ -147,14 +147,14 @@ for(i = 0; i <=symcount; i++){
    }
  }
 }
-char * findsym(interp *vm, char *name){
+char * findsym(interp *sf, char *name){
  if(DEBUG>=2 || DEBUG_LAYER == 2 )  printf("FINDSYM called on name='%s'\n", name);
 int i;
 int idx = 0;
 int found = 0;
  char *result = NULL;
 name[strcspn(name, " ")] = 0;
- if(DEBUG>=2 || DEBUG_LAYER == 2 )  printf("FINDSYM vm->string='%s'\n", vm->string);
+ if(DEBUG>=2 || DEBUG_LAYER == 2 )  printf("FINDSYM sf->string='%s'\n", sf->string);
 for(i = 0; i < symcount; i++){
  if(strcmp(symnames[i], name) == 0) {
  if(DEBUG>=2 || DEBUG_LAYER == 2 )  printf("FINDSYM FOUND: '%s'\n", symvals[i]);
@@ -162,29 +162,29 @@ for(i = 0; i < symcount; i++){
    result = symvals[i];
   }
  }
- if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("FINDSYM after loop vm->string='%s'\n", vm->string);
-    vm->stype = symtype[idx];
+ if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("FINDSYM after loop sf->string='%s'\n", sf->string);
+    sf->stype = symtype[idx];
  if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("UPDATING VARSTACK\n");
    strcpy(varstack[0],name);
   if(found == 0) result = "FINDSYM_NIL";
  return result;
 }
 
-void variable(interp *vm){ // ADD A VARIABLE NAME TO THE SYMTABLE
+void variable(interp *sf){ // ADD A VARIABLE NAME TO THE SYMTABLE
  symtype[symcount++] = VAR_T;
  if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("variable called symtype: %d\n", symtype[symcount]);
- if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("VARIABLE: vm->string: '%s'\n", vm->string);
- parsespace(vm);
+ if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("VARIABLE: sf->string: '%s'\n", sf->string);
+ parsespace(sf);
  char varname[500];
  int n = 0;
   char *s;
- //while(*vm->string != '\0'){  // advance past variable command vm->string++;n++;}
- if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("VARIABLE ADVANCED to: '%s'\n", vm->string);
- parsespace(vm);
+ //while(*sf->string != '\0'){  // advance past variable command sf->string++;n++;}
+ if(DEBUG>=2 || DEBUG_LAYER == 2 ) printf("VARIABLE ADVANCED to: '%s'\n", sf->string);
+ parsespace(sf);
  n = 0;
-while(*vm->string != '\0'){
-     varname[n] = *vm->string;
-     vm->string++;
+while(*sf->string != '\0'){
+     varname[n] = *sf->string;
+     sf->string++;
      n++;
  }
  varname[n] ='\0';
@@ -194,23 +194,23 @@ while(*vm->string != '\0'){
  if(isalpha(*varname))addsymname(varname, "");
 }
 
-void readvar(interp *vm, char *value){
-    findsym(vm, value);     
+void readvar(interp *sf, char *value){
+    findsym(sf, value);     
 }
 
-void question(interp *vm, char *s){
+void question(interp *sf, char *s){
  questionflag = 1;
- printf("%s", findsym(vm, s));
- vm->string++;
+ printf("%s", findsym(sf, s));
+ sf->string++;
 }
 
-void store(interp *vm, char *varname){
+void store(interp *sf, char *varname){
  if(DEBUG>=3 || DEBUG_LAYER == 3 ) printf("STORE CALLED ON: %s\n", varname);
- vm->string++; // eat the !
+ sf->string++; // eat the !
  char buffer[MAX_STR_LEN];
  char *value = NULL;
-  int a = pop(vm);   // pop the stack
-parsespace(vm);
+  int a = pop(sf);   // pop the stack
+parsespace(sf);
 int n = 0;
  value = buffer;
  sprintf(value, "%d", a);
@@ -240,69 +240,69 @@ int matchExpr(char *s, char *match){
     return 0;
 }
 
-void branch_else(interp *vm){
- if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("ELSE CALLED ON : '%s'\n", vm->string);
- vm->string+=4; // get past the ELSE word
-  parsespace(vm);
-  read(vm, vm->string);
- vm->string = "";  
+void branch_else(interp *sf){
+ if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("ELSE CALLED ON : '%s'\n", sf->string);
+ sf->string+=4; // get past the ELSE word
+  parsespace(sf);
+  read(sf, sf->string);
+ sf->string = "";  
 }
 
-void branch_if(interp *vm){
+void branch_if(interp *sf){
    ifflag = 0; // ensure if flag is zero 
    int elseflag = 0;
- if(strstr(vm->string, "else") || strstr(vm->string, "ELSE") ) { elseflag = 1; }
-   strtoupper(vm->string);
-if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("IF BRANCH DETECTED. BRANCHED TO IF: '%s'\n", vm->string);
+ if(strstr(sf->string, "else") || strstr(sf->string, "ELSE") ) { elseflag = 1; }
+   strtoupper(sf->string);
+if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("IF BRANCH DETECTED. BRANCHED TO IF: '%s'\n", sf->string);
  int a = 0; // pop the stack to determine output of the last command
- a = pop(vm);
+ a = pop(sf);
   if(a == 0) { 
    ifflag = 1; 
    if(elseflag) {
-     while(!matchExpr(vm->string, "ELSE")){  // skip up to else
-        vm->string++;
+     while(!matchExpr(sf->string, "ELSE")){  // skip up to else
+        sf->string++;
      }
-    branch_else(vm);    
+    branch_else(sf);    
     }
-   vm->string = ""; 
-    if(DEBUG>=5 || DEBUG_LAYER == 5 )printf ("RETURNING AS DETECTED 0 vmstring: '%s'\n", vm->string); 
+   sf->string = ""; 
+    if(DEBUG>=5 || DEBUG_LAYER == 5 )printf ("RETURNING AS DETECTED 0 sfstring: '%s'\n", sf->string); 
    return; 
  }
-   parsespace(vm); 
+   parsespace(sf); 
  if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("STACK VALUE IS: %d\n", a);
  char expr[MAX_STR_LEN];
   int i = 0; int m = 0;
    if(DEBUG>=5 || DEBUG_LAYER == 5 )  printf("PARSING UP TO END OF STRING.\n");
   if(elseflag){  // Parse up to else only otherwise parse to end of string
-      while(!matchExpr(vm->string, "ELSE")){  // capture up to else
-         expr[i] = *vm->string;
-          vm->string++;i++;      
+      while(!matchExpr(sf->string, "ELSE")){  // capture up to else
+         expr[i] = *sf->string;
+          sf->string++;i++;      
      }
   }
    else {
- while(*vm->string != '\0'){
-      expr[i] = *vm->string;
-      vm->string++;i++;
+ while(*sf->string != '\0'){
+      expr[i] = *sf->string;
+      sf->string++;i++;
      } 
-     vm->string--; // put back char
+     sf->string--; // put back char
     } 
   expr[i] ='\0';
- if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("STACK VALUE FOR EXPR COMPARE: %d and EXPR: '%s' vm->string: '%s'\n", a, expr, vm->string);
+ if(DEBUG>=5 || DEBUG_LAYER == 5 ) printf("STACK VALUE FOR EXPR COMPARE: %d and EXPR: '%s' sf->string: '%s'\n", a, expr, sf->string);
       if(a == 0) { return;}
     else{ 
-      read(vm, expr); 
-      vm->string = "";
+      read(sf, expr); 
+      sf->string = "";
       }
 }
 
-void branch_do(interp *vm){
-if(DEBUG>=5 || DEBUG_LAYER == 5 )printf("***BRANCHED TO DO: '%s'\n", vm->string);
+void branch_do(interp *sf){
+if(DEBUG>=5 || DEBUG_LAYER == 5 )printf("***BRANCHED TO DO: '%s'\n", sf->string);
 int a, b;
  a = b = loopflag = 0;
 // pop the two values off the stack
- a = pop(vm);
- b = pop(vm);
- if(strstr(vm->string, "LOOP") || strstr(vm->string, "loop") ){
+ a = pop(sf);
+ b = pop(sf);
+ if(strstr(sf->string, "LOOP") || strstr(sf->string, "loop") ){
    loopflag = 1;
  }
 
@@ -311,29 +311,29 @@ if(!loopflag  ){
   printf("ERROR: EXPECTED LOOP ;\n");
  } 
    int i = 0;
- while(!matchExpr(vm->string, "LOOP")){
-   expr[i] = *vm->string;
-    vm->string++; i++;
+ while(!matchExpr(sf->string, "LOOP")){
+   expr[i] = *sf->string;
+    sf->string++; i++;
   }
   expr[i] = '\0';
 int n;
  for(n = a; n <= b; n++){
-     vm->r0 = n;
-     push(vm, n);
-     read(vm, expr);
-     pop(vm);
+     sf->r0 = n;
+     push(sf, n);
+     read(sf, expr);
+     pop(sf);
   }
-vm->string = "";
+sf->string = "";
 }
 
 // will get rid whitespace when parsing the input
-void parsespace (interp *vm){
+void parsespace (interp *sf){
 if(DEBUG>=8 || DEBUG_LAYER == 8 ) printf("PARSESPACE CALLED\n");
- char *s = vm->string;
+ char *s = sf->string;
   while(*s == ' ' || *s == '\t' || *s == '\n'){
     s++;
    }
- vm->string = s;  // update the parser
+ sf->string = s;  // update the parser
 }
 
 char *strtoupper(char *s){   // converts string to upper case
@@ -349,8 +349,8 @@ if(DEBUG>=8 || DEBUG_LAYER == 8 ) printf("STRTOUPPER CALLED on string '%s'\n", s
  return s;
 }
 
-int stack_empty(interp *vm){   // returns if the stack is empty or not.
- if(vm->sc == 0){
+int stack_empty(interp *sf){   // returns if the stack is empty or not.
+ if(sf->sc == 0){
   return 1;
   }
  else { 
@@ -358,235 +358,235 @@ int stack_empty(interp *vm){   // returns if the stack is empty or not.
   }
 }
 
-void call_system(interp *vm){
- if(*vm->string == '"')vm->string++;
- if(strstr(vm->string, "\"")) vm->string[strlen(vm->string)-1] = 0;
-  system(vm->string);
+void call_system(interp *sf){
+ if(*sf->string == '"')sf->string++;
+ if(strstr(sf->string, "\"")) sf->string[strlen(sf->string)-1] = 0;
+  system(sf->string);
 }
 /* ******************************  PRIMITIVES ***************************************** */
-int push(interp *vm, int n){ // pushes an int on the stack
- if(questionflag == 1) return vm->error = OK;
- vm->stack[vm->sp] = n;
- vm->sp++;
- vm->sc++;
-if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("pushed %d, sp=%d, sc=%d\n", n, vm->sp, vm->sc);
- return vm->error = OK; 
+int push(interp *sf, int n){ // pushes an int on the stack
+ if(questionflag == 1) return sf->error = OK;
+ sf->stack[sf->sp] = n;
+ sf->sp++;
+ sf->sc++;
+if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("pushed %d, sp=%d, sc=%d\n", n, sf->sp, sf->sc);
+ return sf->error = OK; 
 }
 
-int pop(interp *vm){   // pops an int from the stack
+int pop(interp *sf){   // pops an int from the stack
  if(seeflag) return 0;
  if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("POP CALLED\n");
- if(vm->sp== 0){ 
+ if(sf->sp== 0){ 
    printf("ERROR: STACK UNDERFLOW\n");
   return 0;
  }
- vm->sp--;
- int c = vm->stack[vm->sp];
- vm->sc--;
- vm->sv = c;
+ sf->sp--;
+ int c = sf->stack[sf->sp];
+ sf->sc--;
+ sf->sv = c;
  return c; 
 }
 
-void clear_stack(interp *vm){
+void clear_stack(interp *sf){
  int i;
-for (i = 0 ; i <= vm->sp; i++){
-  drop(vm);
+for (i = 0 ; i <= sf->sp; i++){
+  drop(sf);
  }
- int sctemp = vm->sc;
+ int sctemp = sf->sc;
  for (i = 0 ; i < sctemp; i++){
-  drop(vm);
+  drop(sf);
  }
-  vm->sp = 0;
-  vm->sc = 0;
+  sf->sp = 0;
+  sf->sc = 0;
 }
 
-int add(interp *vm){ // pop 2 items from the stack and add them
+int add(interp *sf){ // pop 2 items from the stack and add them
  int a, b, c;
- vm->sv = 0;
+ sf->sv = 0;
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("ADD CALLED\n");
-  a = pop(vm);
-  b = pop(vm);
+  a = pop(sf);
+  b = pop(sf);
   c = b + a;
-  push(vm, c);
- vm->sv = c;
-return vm->sv;
+  push(sf, c);
+ sf->sv = c;
+return sf->sv;
 }
 
-int sub(interp *vm){
+int sub(interp *sf){
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b - a;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int mul(interp *vm){
+int mul(interp *sf){
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b * a;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int drop(interp *vm){   // drops the last int from the top of stack
+int drop(interp *sf){   // drops the last int from the top of stack
   int a = 0;
-  a = pop(vm);
- vm->sv = vm->stack[vm->sp];
- return vm->sv;
+  a = pop(sf);
+ sf->sv = sf->stack[sf->sp];
+ return sf->sv;
 }
-int dup(interp *vm){     // duplicates the top of the stack
+int dup(interp *sf){     // duplicates the top of the stack
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("DUP CALLED \n"); 
  int a = 0;
- a = vm->stack[vm->sp - 1];
- push(vm, a);
- vm->sv = a;
- return vm->sv;
+ a = sf->stack[sf->sp - 1];
+ push(sf, a);
+ sf->sv = a;
+ return sf->sv;
 }
 
-int swap(interp *vm){
+int swap(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("SWAP CALLED \n"); 
  int a, b;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
-  push(vm, a);
-  push(vm, b);
-  vm->sv = a;
-return vm->sv;
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
+  push(sf, a);
+  push(sf, b);
+  sf->sv = a;
+return sf->sv;
 }
 
-int mod(interp *vm){
+int mod(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("MOD CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b % a;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int equal(interp *vm){
+int equal(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("EQUAL CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b == a ? -1 : 0;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int not_equal(interp *vm){
+int not_equal(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("NOT EQUAL CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b != a ? -1 : 0;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int greater(interp *vm){
+int greater(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("GREATER THAN CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b > a ? -1 : 0;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int less(interp *vm){
+int less(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("LESS THAN CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
-  b = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
+  b = pop(sf);
   c = b < a ? -1 : 0;
-  push(vm, c);
-  vm->sv = c;
-return vm->sv;
+  push(sf, c);
+  sf->sv = c;
+return sf->sv;
 }
 
-int negate(interp *vm){
+int negate(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("NEGATE CALLED \n"); 
  int a, b, c;
- vm->sv = 0;
-  a = pop(vm);
+ sf->sv = 0;
+  a = pop(sf);
   a = a * -1;
-  push(vm, a);
-  vm->sv = a;
-return vm->sv;
+  push(sf, a);
+  sf->sv = a;
+return sf->sv;
 }
 
-void rotate(interp *vm){
+void rotate(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("ROTATE CALLED \n"); 
 int a, b, c; // pop the last 3 elements from the stack and rotate them
-a = pop(vm);
-b = pop(vm);
-c = pop(vm);
-push(vm, b);
-push(vm, a);
-push(vm, c);
+a = pop(sf);
+b = pop(sf);
+c = pop(sf);
+push(sf, b);
+push(sf, a);
+push(sf, c);
 }
 
-void over(interp *vm){
+void over(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("OVER CALLED \n"); 
 int a, b; // take the next to last stack element DUP and push
-a = pop(vm);
-b = pop(vm);
-push(vm, b);
-push(vm, a);
-push(vm, b);
+a = pop(sf);
+b = pop(sf);
+push(sf, b);
+push(sf, a);
+push(sf, b);
 }
 
-void nip(interp *vm){
+void nip(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("NIP CALLED \n"); 
 int a, b; // removes the second from last
-a = pop(vm);
-b = pop(vm);
-push(vm, a);
+a = pop(sf);
+b = pop(sf);
+push(sf, a);
 }
 
-void tuck(interp *vm){
+void tuck(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("TUCK CALLED \n"); 
 int a, b, c; // take the last and push it 3 behind
-a = pop(vm);
-b = pop(vm);
-c = pop(vm);
-push(vm, c);
-push(vm, a);
-push(vm, b);
-push(vm, a);
+a = pop(sf);
+b = pop(sf);
+c = pop(sf);
+push(sf, c);
+push(sf, a);
+push(sf, b);
+push(sf, a);
 }
 
-int see(interp *vm){
+int see(interp *sf){
 if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("SEE CALLED \n"); 
  char *buff; 
- parsespace(vm);
-if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("SEE CALLED ON '%s'\n", vm->string); 
- buff = findsym(vm, strtoupper(vm->string));   // if a word exists then print the definition
+ parsespace(sf);
+if(DEBUG>=1 || DEBUG_LAYER == 1 ) printf("SEE CALLED ON '%s'\n", sf->string); 
+ buff = findsym(sf, strtoupper(sf->string));   // if a word exists then print the definition
    if(strcmp(buff, "FINDSYM_NIL") != 0){
-   printf("FOUND:\n: %s %s\n", vm->string, buff); 
+   printf("FOUND:\n: %s %s\n", sf->string, buff); 
   }
- vm->string = "";
+ sf->string = "";
  return 0; 
 }
 /* *********************************** EVAL *************************************** */
-void eval(interp *vm, int op){ // evaluates the current token mapped by word
+void eval(interp *sf, int op){ // evaluates the current token mapped by word
 if(DEBUG>=6 || DEBUG_LAYER == 6 ) printf("EVAL CALLED\n"); 
  if(DEBUG>=6 || DEBUG_LAYER == 6 ) printf("OP DETECTED: '%s'\n", words[op]); 
  switch (op){   // perform the Operation
@@ -594,23 +594,23 @@ if(DEBUG>=6 || DEBUG_LAYER == 6 ) printf("EVAL CALLED\n");
         printf("\n"); break;
      }
     case ADD: {
-      add(vm); 
+      add(sf); 
       break;
      }
     case SUB: {
-      sub(vm); 
+      sub(sf); 
       break;
      }
    case MUL: {
-      mul(vm); 
+      mul(sf); 
       break;
      }
     case DUP: {
-      dup(vm); 
+      dup(sf); 
       break;
      }
    case DRP: {
-      drop(vm); 
+      drop(sf); 
       break;
      }
   case WRD: {
@@ -630,288 +630,288 @@ if(DEBUG>=6 || DEBUG_LAYER == 6 ) printf("EVAL CALLED\n");
       break;     
     }
  case SWP: {
-    swap(vm); 
+    swap(sf); 
     break;
     }
   case CLR: {
-      clear_stack(vm); 
+      clear_stack(sf); 
       break;     
     }
   case MOD: {
-     mod(vm); 
+     mod(sf); 
      break;
     }
   case EQL: {
-     equal(vm); 
+     equal(sf); 
      break;
     }
   case GTN: {
-     greater(vm); 
+     greater(sf); 
      break;
     }
   case LTN: {
-     less(vm); 
+     less(sf); 
      break;
     }
   case SEE: {
      seeflag = 1; 
-     see(vm); 
+     see(sf); 
      break;
     }  
   case VAR: {
-     variable(vm); 
+     variable(sf); 
      break;
     }
   case STO: {
-     store(vm, varstack[0]); 
+     store(sf, varstack[0]); 
      break;
     }
   case RVR: {
-       readvar(vm, varstack[0]); 
+       readvar(sf, varstack[0]); 
        break;
     }
   case IF: {
-      branch_if(vm);
+      branch_if(sf);
       break;
     }
   case ELS: {
-      branch_else(vm); 
+      branch_else(sf); 
       break;
     }
   case NEQ: {
-     not_equal(vm); 
+     not_equal(sf); 
      break;
    }
  case DSM: {
-     dumpsym(vm); 
+     dumpsym(sf); 
      break;
    } 
  case DO: {
-     branch_do(vm); 
+     branch_do(sf); 
      break;
    } 
  case NEG: {
-     negate(vm);
+     negate(sf);
      break;
    } 
  case LIB: {            
-    readlib(vm, vm->string); 
+    readlib(sf, sf->string); 
     break;
    } 
  case I: {
-     printf("%d", vm->r0); 
-     vm->string++;  
+     printf("%d", sf->r0); 
+     sf->string++;  
      break;
    } 
  case ROT: {
-     rotate(vm); 
+     rotate(sf); 
      break;
    } 
  case OVR: {
-     over(vm); 
+     over(sf); 
      break;
    } 
 case NIP: {
-     nip(vm); 
+     nip(sf); 
      break;
    } 
 case TCK: {
-     tuck(vm); 
+     tuck(sf); 
      break;
    } 
  case QST: {
      break;
    }
  case SYS: {
-    call_system(vm);
+    call_system(sf);
     break;   
  } 
   case EXT: { 
      op = BYE; 
    }
   case BYE: {
-    destroy_vm(vm); 
+    destroy_sf(sf); 
     if(interact) printf("Exiting Interpreter..\n"); 
     exit(0); 
    }
   } // end switch
 }
 /* **************************   PARSEWORD ****************************************************** */
-int parseword(interp *vm){              // Attempts to parse a word from the input
- if(! isprint(*vm->string)) {
+int parseword(interp *sf){              // Attempts to parse a word from the input
+ if(! isprint(*sf->string)) {
   if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("ERROR: NON ASCII VALUE DETECTED.\n"); 
-  vm->string = "";
+  sf->string = "";
   return 0;
   }
  if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("PARSEWORD CALLED\n");
- if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("PARSEWORD vm->string: '%s'\n", vm->string);
+ if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("PARSEWORD sf->string: '%s'\n", sf->string);
  int c = 0;
  char word[WORD_MAX]; 
   int i = 0;
-  while(isprint(*vm->string) && *vm->string != ' '){
-      word[i++] = *vm->string; 
-      vm->string++;
+  while(isprint(*sf->string) && *sf->string != ' '){
+      word[i++] = *sf->string; 
+      sf->string++;
   }
- parsespace(vm);
+ parsespace(sf);
  word[i] = '\0';
- if(DEBUG>=7 || DEBUG_LAYER == 7 )printf("PARSEWORD AFTER '%s'\n", vm->string);
+ if(DEBUG>=7 || DEBUG_LAYER == 7 )printf("PARSEWORD AFTER '%s'\n", sf->string);
  strtoupper(word);  // convert the string to upper 
  int l = lookup(word);
  if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("LOOKUP FOUND: '%s:%d'\n", words[l], l );
  if(l > 0) {   // call eval with the command found
    if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("lookup op: %d\n", l);
-   eval ( vm, l); 
+   eval ( sf, l); 
   }
  else {    // if the word is not found in primatives then search the symtable
  char *hresult;
- hresult = findsym(vm, word);
+ hresult = findsym(sf, word);
  if(DEBUG>=7 || DEBUG_LAYER == 7 ) printf("parseword::hresult = '%s'\n", hresult);
  if(strstr(hresult, "FINDSYM_NIL") == 0){
-  if(DEBUG>=7 || DEBUG_LAYER == 7 )  printf("CALLING READ with findsym data: '%s' vm->string = '%s'\n", hresult, vm->string);
-  if(*vm->string == '?') { question(vm, word); }
-   if(*vm->string == '!'){ store(vm, word); } else {
-      read(vm, hresult);
+  if(DEBUG>=7 || DEBUG_LAYER == 7 )  printf("CALLING READ with findsym data: '%s' sf->string = '%s'\n", hresult, sf->string);
+  if(*sf->string == '?') { question(sf, word); }
+   if(*sf->string == '!'){ store(sf, word); } else {
+      read(sf, hresult);
       }
   }
  }
  memset(word, 0, sizeof(word));
- if(DEBUG>=7 || DEBUG_LAYER == 7 )printf("PARSEWORD RETURNING AND STRING LEFT '%s'\n", vm->string);
- return vm->state = OK;
+ if(DEBUG>=7 || DEBUG_LAYER == 7 )printf("PARSEWORD RETURNING AND STRING LEFT '%s'\n", sf->string);
+ return sf->state = OK;
 }
 /* **************************   PARSEDOT  ***************************************************** */
-interp * parsedot(interp *vm){        // Parses an expression beginning with a DOT
+interp * parsedot(interp *sf){        // Parses an expression beginning with a DOT
  if(DEBUG > 8 || DEBUG_LAYER == 8) printf("PARSEDOT CALLED\n");
-   vm->string++;
-   if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("PARSEDOT S: %s\n", vm->string);
-    if(*vm->string == 'S' || *vm->string == 's'){
-     if(DEBUG > 8 || DEBUG_LAYER == 8 )  printf("FOUND COMMAND %c\n", *vm->string);
-    print_stack(vm);
+   sf->string++;
+   if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("PARSEDOT S: %s\n", sf->string);
+    if(*sf->string == 'S' || *sf->string == 's'){
+     if(DEBUG > 8 || DEBUG_LAYER == 8 )  printf("FOUND COMMAND %c\n", *sf->string);
+    print_stack(sf);
     } 
-    else if(*vm->string == '"'){        // if we find a string
-      vm->string++; 
-        if(*vm->string != ' '){  printf("SYNTAX ERROR: <EXPECTED SPACE>\n");
-              vm->string = ""; 
-             return vm;
+    else if(*sf->string == '"'){        // if we find a string
+      sf->string++; 
+        if(*sf->string != ' '){  printf("SYNTAX ERROR: <EXPECTED SPACE>\n");
+              sf->string = ""; 
+             return sf;
          }
-          vm->string++;// eat the space
-         while(*vm->string != '"'){
-           printf("%c", *vm->string);
-            vm->string++; 
+          sf->string++;// eat the space
+         while(*sf->string != '"'){
+           printf("%c", *sf->string);
+            sf->string++; 
          }        
     }
     else {
       int a = 0;
-      a = pop(vm);
+      a = pop(sf);
       printf("%d", a); 
 
      }
-   vm->string++; 
-  return vm;
+   sf->string++; 
+  return sf;
 }
 
 /* **************************   PARSENUM ****************************************************** */
 // parses an integer
-interp *parsenum (interp *vm){// parse the current number and push on the stack
-   if (DEBUG > 8 || DEBUG_LAYER == 8) printf("parsenum called on string: '%s'\n", vm->string);
-  char *s = vm->string; 
+interp *parsenum (interp *sf){// parse the current number and push on the stack
+   if (DEBUG > 8 || DEBUG_LAYER == 8) printf("parsenum called on string: '%s'\n", sf->string);
+  char *s = sf->string; 
   int n = 0;
   while(*s >= '0' && *s <= '9' && *s != ' ') {
     n = (n * 10) + (*s - '0');    
      s++;
    } 
-  if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("parsenum  vm->string '%s'\n", vm->string);
+  if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("parsenum  sf->string '%s'\n", sf->string);
   if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("PARSENUM:: collected n: '%d'\n", n);
-  push(vm, n);
-  vm->string = s;
-  if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("parsenum returning vm->string '%s'\n", vm->string);
-  if(*vm->string != '\0') read(vm, vm->string);
-  return vm;
+  push(sf, n);
+  sf->string = s;
+  if(DEBUG > 8 || DEBUG_LAYER == 8 ) printf("parsenum returning sf->string '%s'\n", sf->string);
+  if(*sf->string != '\0') read(sf, sf->string);
+  return sf;
 }
 
 /* **************************   COMPILE MODE ****************************************************** */
 
-interp *compile(interp *vm){ 
- if (DEBUG > 5 ) printf("compile called on string: '%s'\n", vm->string);
+interp *compile(interp *sf){ 
+ if (DEBUG > 5 ) printf("compile called on string: '%s'\n", sf->string);
  compilemode = 1; 
- vm->string++; // strip the colon
- parsespace(vm);
+ sf->string++; // strip the colon
+ parsespace(sf);
  char cmdname[500];
  char cmdval[500];
  int n = 0;
   char *s;
- while(*vm->string != ' '){     // parse the name of the command
-     cmdname[n] = *vm->string;
-     vm->string++;
+ while(*sf->string != ' '){     // parse the name of the command
+     cmdname[n] = *sf->string;
+     sf->string++;
      n++;
  }
  cmdname[n] ='\0';
 
- parsespace(vm);
+ parsespace(sf);
  n = 0;
-while(*vm->string != ';'){
-     cmdval[n] = *vm->string;
-     vm->string++;
+while(*sf->string != ';'){
+     cmdval[n] = *sf->string;
+     sf->string++;
      n++;
  }
  cmdval[n] = '\0';
-if(*vm->string == ';' ) compilemode = 0;
+if(*sf->string == ';' ) compilemode = 0;
  // send the command to the table and the rest of the string as definition
  addsymname(cmdname, cmdval);
- vm->string++;
- return vm;
+ sf->string++;
+ return sf;
 }
 
 /* ************************** READ INPUT **************************************** */
 
-void read(interp *vm, char *s){
+void read(interp *sf, char *s){
  if(seeflag) return;
 
  if(DEBUG > 9 || DEBUG_LAYER == 9 ) printf("READ CALLED on '%s'\n", s);
  
    strcpy(progmem[linenum], s); // store the input in progmem
    linenum++;   
-   vm->string = strdup(s);
+   sf->string = strdup(s);
    int i;
 
- while(*vm->string != '\0'){
-   parsespace(vm);
-   if(isdigit(*vm->string) ) {
-     parsenum(vm);
-    if(DEBUG > 9 || DEBUG_LAYER == 9) print_stack(vm);
+ while(*sf->string != '\0'){
+   parsespace(sf);
+   if(isdigit(*sf->string) ) {
+     parsenum(sf);
+    if(DEBUG > 9 || DEBUG_LAYER == 9) print_stack(sf);
    }
-   else if(*vm->string == ':'){
-     compile(vm);
+   else if(*sf->string == ':'){
+     compile(sf);
    }
-   else if(*vm->string == '.'){
+   else if(*sf->string == '.'){
      if(DEBUG > 9 || DEBUG_LAYER == 9) printf("DETECTED DOT\n");
-     parsedot(vm);
+     parsedot(sf);
    }
-   else if(*vm->string == '?'){
+   else if(*sf->string == '?'){
       printf("READ CAUGHT QUESION ?\n");
     }
-  else { parseword(vm); }
-  parsespace(vm);
+  else { parseword(sf); }
+  parsespace(sf);
  }
  questionflag = 0;
 }
 
 /* ****************************** PRINT  ************************************************* */
-// this will free the initial memory used by the vm
-void destroy_vm(interp *vm){
- free(vm);
+// this will free the initial memory used by the sf
+void destroy_sf(interp *sf){
+ free(sf);
 }
 
 // This prints what is on the stack
-void print_stack(interp *vm){
+void print_stack(interp *sf){
  int i;
  if(interact) printf("[ ");
- for (i = 0 ; i < vm->sp; i++){
-   printf("%d ", vm->stack[i]);
+ for (i = 0 ; i < sf->sp; i++){
+   printf("%d ", sf->stack[i]);
   }
  if(interact) printf("]\n");
 }
 
-void dumpsym(interp *vm){
+void dumpsym(interp *sf){
    int i;
     for(i = 0; i < symcount;i++){
        printf("%s => %s\n", symnames[i], symvals[i]);
@@ -948,7 +948,7 @@ printf("\n");
  printf("\n");
 }
 
-void readlib(interp *vm, char *filename){
+void readlib(interp *sf, char *filename){
    if(DEBUG >=8) printf("READLIB CALLED on '%s'\n", filename);
    char buffer[MAX_STR_LEN];
    if(*filename == '"')filename++;
@@ -958,17 +958,17 @@ void readlib(interp *vm, char *filename){
        while(fgets(buffer, MAX_STR_LEN, lib) != NULL){
          buffer[strcspn(buffer, "\n")] = 0;
          if(DEBUG >= 1 || DEBUG_LAYER == 1) printf("read: %s\n", buffer);
-           read(vm, buffer);
+           read(sf, buffer);
            memset(buffer, 0 , MAX_STR_LEN);         
         }        
 }
 
-// Main loop, initialize the VM, get input and call the parser
+// Main loop, initialize the sf, get input and call the parser
 int main(int argc, char *argv[]){
-  interp *vm;
-  vm = init_vm();
+  interp *sf;
+  sf = init_sf();
   char buffer[MAX_STR_LEN];
-  //readlib(vm, "functions.txt");
+  //readlib(sf, "functions.txt");
 
  // check for interactive versus non interactive mode
  if(argc > 1) {
@@ -981,7 +981,7 @@ int main(int argc, char *argv[]){
         while(fgets(buffer, MAX_STR_LEN, fp) != NULL){
          buffer[strcspn(buffer, "\n")] = 0;
            //printf("read: %s\n", buffer);
-           read(vm, buffer);
+           read(sf, buffer);
            memset(buffer, 0 , MAX_STR_LEN);         
         }        
      }
@@ -992,7 +992,7 @@ int main(int argc, char *argv[]){
      fgets(buffer, MAX_STR_LEN, stdin); 
        buffer[strcspn(buffer, "\n")] = 0; 
             seeflag = 0;
-           read(vm, buffer);
+           read(sf, buffer);
            printf("\nOK\n");
         memset(buffer, 0 , MAX_STR_LEN);            
  }
