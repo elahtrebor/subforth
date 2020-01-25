@@ -1,7 +1,7 @@
 # subforth
-A simple interpreter that supports a subset of forth. Compiled and tested using GCC on WSL Ubuntu, Linux Mint 17, and Android.
+A simple interpreter that supports a subset of forth.
 <pre>
-Work in progress.
+Work in progress. Compiled and tested using GCC on WSL Ubuntu, Linux Mint 17, and Android.
 
 Supports the following words:
 
