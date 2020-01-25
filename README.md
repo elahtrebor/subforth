@@ -12,7 +12,7 @@ NIP  TUCK  EXIT  SYSTEM
 
 Here is a simple test drive output:
 
-MYFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale
+SUBFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale
 
 variable myvar
 
