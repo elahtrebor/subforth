@@ -1,11 +1,10 @@
 myforth:
 	@echo Compiling.. 
-	cc -o myforth myforth.c 
-	cc myforth.c
+	cc -o subforth subforth.c 
 clean:
  ifeq ($(UNAME), Linux)
-	rm myforth a.out
+	rm subforth
 else
-	rm myforth.exe a.exe
+	rm subforth.exe
 endif
 
