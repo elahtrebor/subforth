@@ -1,0 +1,4 @@
+: SQUARE DUP * ;
+: DOUBLE DUP + ;
+: INC 1 + ;
+: DEC 1 - ;
