@@ -1,4 +1,4 @@
-myforth:
+subforth:
 	@echo Compiling.. 
 	cc -o subforth subforth.c 
 clean:
