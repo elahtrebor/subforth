@@ -22,7 +22,7 @@ Added the system command to allow execution of other programs.
 You can run the interprer interactively or pass a file as argument to run as a script.
 
 ./subforth -h
-Use: ./subforth <FORTH_FILENAME.f>
+Use: ./subforth \<FORTH_FILENAME.f\>
 
 
 
