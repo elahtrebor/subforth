@@ -10,6 +10,9 @@ DEBUGOFF  PRINTPROG  DUMPSYM  SWAP  CR  CLEAR  MOD  =  >  <  SEE  VARIABLE
 !  @  IF  <>  ELSE  DO  NEGATE  I  ?  INCLUDE  ROT  OVER
 NIP  TUCK  EXIT  SYSTEM
 
+Supports Debugging within the Command Line. DEBUG turns debugging on. DEBUGOFF turns it off.
+Added the system command to allow execution of other programs.
+
 Here is a simple test drive output:
 
 SUBFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale
