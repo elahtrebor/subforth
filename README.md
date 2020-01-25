@@ -3,18 +3,31 @@ A simple interpreter that supports a subset of forth.
 <pre>
 Work in progress.
 
-Supports words:
+Supports the following words:
 
 +  -  *  /  PUSH  POP  DUP  DROP  BYE  HALT  WORDS  DEBUG
 DEBUGOFF  PRINTPROG  DUMPSYM  SWAP  CR  CLEAR  MOD  =  >  <  SEE  VARIABLE
 !  @  IF  <>  ELSE  DO  NEGATE  I  ?  INCLUDE  ROT  OVER
 NIP  TUCK  EXIT  SYSTEM
 
-Supports Debugging within the Command Line. DEBUG turns debugging on. DEBUGOFF turns it off.
+Words can be extended by using the INCLUDE word. Example:  include functions.txt or include "functions.txt"
+User defined words or functions are denoted with a (U): when you list the word dictionary.
+ (U):SQUARE  (U):DOUBLE  (U):INC  (U):DEC
+ 
+The interpreter supports Debugging within the Command Line. DEBUG turns full debugging on. DEBUGOFF turns it off. 
+To debug a subsystem set the variable DEBUG_LAYER to desired level and re compile.
+
 Added the system command to allow execution of other programs.
 
-Here is a simple test drive output:
+You can run the interprer interactively or pass a file as argument to run as a script.
 
+./subforth -h
+Use: ./subforth <FORTH_FILENAME.f>
+
+
+
+Here is a simple test drive output:
+--------------------------------------------------------------------------------------------------------------------------------
 SUBFORTH 1.0 - COMPILED JAN 2020 - Developed by rhale
 
 variable myvar
